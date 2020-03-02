@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8">
+        <meta name="referrer" content="same-origin">
+        
+        <title>Position du soleil</title>
+        
+        <meta name="description" content=" ">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" href="data:,">
+        
+        <link crossorigin="anonymous" rel="stylesheet" href="https://cdn.jsdelivr.net/gh/twbs/bootstrap@v4/dist/css/bootstrap-reboot.css">
+        
+        <style>
+            body > *{
+                padding: 0 20%;
+            }
+
+            label{
+                display: flex;
+            }
+
+            form section.time div{
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+            }
+
+            form section.time div section{
+                width: 50%;
+            }
+        </style>
+
+        <!--
+        <script crossorigin="anonymous" src="https://polyfill.io/v3/polyfill.min.js?flags=always&features=default%2Ces2017%2Ces2016%2Ces2015%2Cfetch"></script>
+        -->
+
+        <script defer src="./suncalc.js"></script>
+
+    </head>
+    <body>
+        <h1>Position du Soleil</h1>
+        <form>
+            <h2>Position sur Terre</h2>
+
+            <label>Latitude&nbsp;<input class="latitude" type="number" value="44.837789" step="0.000001"></label>
+            <label>Longitude&nbsp;<input class="longitude" type="number" value="-0.57918" step="0.000001"></label>
+
+            <section class="time">
+                <h2>Moment</h2>
+                
+                <label>Date&nbsp;<input class="date" type="date" value="2020-03-08"></label>
+
+                <div>
+                    <section class="jit">
+                        <h3>Calcul en direct</h3>
+                        <label>Heure&nbsp;<input class="time" type="time" step="1" value="12:03:04"></label>
+
+                        <output/>
+                    </section>
+                    <section class="aot">
+                        <h3>Calcul pour 1 journée</h3>
+
+                        <label>Écart (secondes)&nbsp;<input class="step" type="number" value="61" min="60"></label>
+
+                        <output/>
+                    </section>
+                </div>
+            <section>
+        </form>
+
+        <script>
+            "use strict";
+
+            function value(selector, baseElement = document){
+                const element = baseElement.querySelector(selector)
+                switch(element.type){
+                    case 'number':
+                        return element.valueAsNumber;
+                    case 'date':
+                        return element.valueAsDate;
+                    default:
+                        return element.value;
+                }
+            }
+
+            function collectData(document){
+                const form = document.querySelector('form')
+
+                const latitude = value('.latitude', form);
+                const longitude = value('.longitude', form);
+                const date = value('.date', form);
+                const time = value('input.time', form);
+
+                const [hour, minute, seconds] = time.split(':')
+
+                date.setHours(hour);
+                date.setMinutes(minute);
+                date.setSeconds(seconds);
+
+                return {latitude, longitude, date};
+            }
+        
+            function fillJITOutput({ azimuth, altitude }, output){
+                output.innerHTML = `
+                    <div>azimuth (rad): ${azimuth}</div>
+                    <div>altitude (rad): ${altitude}</div>
+                
+                `
+            }
+
+            document.addEventListener('DOMContentLoaded', e => {
+                const {date, latitude, longitude} = collectData(document)
+                console.log('data', {date, latitude, longitude})
+
+                const jitResults = SunCalc.getPosition(date, latitude, longitude)
+
+                console.log('jitResults', jitResults)
+
+                fillJITOutput(jitResults, document.querySelector('.jit output'))
+            })
+        </script>
+
+    </body>
+</html>
