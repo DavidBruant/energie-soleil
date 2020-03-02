@@ -62,7 +62,7 @@
                     <section class="aot">
                         <h3>Calcul pour 1 journée</h3>
 
-                        <label>Écart (secondes)&nbsp;<input class="step" type="number" value="61" min="60"></label>
+                        <label>Écart (secondes)&nbsp;<input class="step" type="number" value="347" min="60" max="50000"></label>
 
                         <output/>
                     </section>
@@ -70,8 +70,13 @@
             <section>
         </form>
 
-        <script>
-            "use strict";
+        <script type=module>
+            import format from 'https://cdn.jsdelivr.net/npm/date-fns@2.10.0/esm/format/index.js'
+            import addSeconds from 'https://cdn.jsdelivr.net/npm/date-fns@2.10.0/esm/addSeconds/index.js'
+            import startOfDay from 'https://cdn.jsdelivr.net/npm/date-fns@2.10.0/esm/startOfDay/index.js'
+            import isSameDay from 'https://cdn.jsdelivr.net/npm/date-fns@2.10.0/esm/isSameDay/index.js'
+
+
 
             function value(selector, baseElement = document){
                 const element = baseElement.querySelector(selector)
@@ -92,6 +97,7 @@
                 const longitude = value('.longitude', form);
                 const date = value('.date', form);
                 const time = value('input.time', form);
+                const step = value('.step', form);
 
                 const [hour, minute, seconds] = time.split(':')
 
@@ -99,26 +105,75 @@
                 date.setMinutes(minute);
                 date.setSeconds(seconds);
 
-                return {latitude, longitude, date};
+                return {latitude, longitude, date, step};
             }
         
-            function fillJITOutput({ azimuth, altitude }, output){
-                output.innerHTML = `
+            function createJITOutput({ azimuth, altitude }, output){
+                return `
                     <div>azimuth (rad): ${azimuth}</div>
-                    <div>altitude (rad): ${altitude}</div>
+                    <div>angle d'élévation (rad): ${altitude}</div>
                 
                 `
             }
 
+            function createAOTOutput(values){
+                return `
+                    <table>
+                        <tr>
+                            <td>heure
+                            <td>azimut (rad)
+                            <td>angle d'élévation (rad)
+                        </tr>
+                        ${
+                            values.map(({date, azimuth, altitude}) => {
+                                return `<tr>
+                                    <td>${format(date, 'HH:mm:ss')}
+                                    <td>${azimuth}
+                                    <td>${altitude}
+                                </tr>`
+                            }).join('')
+                        }
+                    </table>
+                `
+            }
+
+
             document.addEventListener('DOMContentLoaded', e => {
-                const {date, latitude, longitude} = collectData(document)
-                console.log('data', {date, latitude, longitude})
+                const jitOutput = document.querySelector('.jit output');
+                const aotOutput = document.querySelector('.aot output');
 
-                const jitResults = SunCalc.getPosition(date, latitude, longitude)
+                function render(){
+                    const {date, latitude, longitude, step = 60} = collectData(document)
 
-                console.log('jitResults', jitResults)
+                    // JIT
+                    const jitResults = SunCalc.getPosition(date, latitude, longitude)
 
-                fillJITOutput(jitResults, document.querySelector('.jit output'))
+                    console.log('render', {date, latitude, longitude}, jitResults)
+
+                    jitOutput.innerHTML = createJITOutput(jitResults);
+
+                    // AOT
+                    const aotDateTimes = [];
+                    const startOfDayDate = startOfDay(date);
+                    let lastDate = startOfDayDate
+                    
+                    console.log('step', step)
+
+                    while(isSameDay(startOfDayDate, lastDate)){
+                        aotDateTimes.push(lastDate)
+                        lastDate = addSeconds(lastDate, step)
+                    }
+
+                    console.log('aotDateTimes', aotDateTimes)
+
+                    aotOutput.innerHTML = createAOTOutput(aotDateTimes.map(date => ({date, ...SunCalc.getPosition(date, latitude, longitude)})))
+                }
+
+                for(const input of document.querySelectorAll('input')){
+                    input.addEventListener('change', render)
+                }
+
+                render()
             })
         </script>
 
